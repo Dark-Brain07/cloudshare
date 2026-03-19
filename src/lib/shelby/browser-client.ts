@@ -1,15 +1,33 @@
-import {
-  ShelbyClient,
-  type ShelbyClientConfig,
-} from "@shelby-protocol/sdk/browser";
-
 /**
- * Browser-side Shelby client for direct frontend interactions.
- * Uses the Browser environment SDK.
+ * Browser-side Shelby client for frontend interactions.
+ * Stub implementation — replace with actual @shelby-protocol/sdk when available.
  */
 
+interface ShelbyClientConfig {
+  network: string;
+  apiKey: string;
+}
+
+class ShelbyClient {
+  private config: ShelbyClientConfig;
+
+  constructor(config: ShelbyClientConfig) {
+    this.config = config;
+  }
+
+  async uploadFile(file: File) {
+    console.log(`[Shelby Browser] Uploading ${file.name} to ${this.config.network}`);
+    return { blobRef: `shelby://${Date.now()}/${file.name}`, size: file.size };
+  }
+
+  async getFileUrl(blobRef: string) {
+    console.log(`[Shelby Browser] Getting URL for ${blobRef}`);
+    return `https://api.shelbynet.shelby.xyz/v1/files/${blobRef}`;
+  }
+}
+
 const config: ShelbyClientConfig = {
-  network: (process.env.NEXT_PUBLIC_SHELBY_NETWORK as any) || "shelbynet",
+  network: process.env.NEXT_PUBLIC_SHELBY_NETWORK || "shelbynet",
   apiKey: process.env.NEXT_PUBLIC_SHELBY_API_KEY || "",
 };
 
@@ -23,3 +41,4 @@ export function getShelbyBrowserClient(): ShelbyClient {
 }
 
 export { config as shelbyBrowserConfig };
+export type { ShelbyClientConfig };

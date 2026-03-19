@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useWallet } from "@/components/WalletProvider";
 import type { MarketplaceListing } from "./MarketplaceGrid";
 
 interface PurchaseModalProps {

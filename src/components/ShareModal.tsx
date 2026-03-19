@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useWallet } from "@/components/WalletProvider";
 
 interface ShareModalProps {
   isOpen: boolean;

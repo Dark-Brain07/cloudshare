@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useWallet } from "@/components/WalletProvider";
 import Sidebar from "@/components/Sidebar";
 import StatsCard from "@/components/StatsCard";
 import FileList, { demoFiles, demoStats } from "@/components/FileList";

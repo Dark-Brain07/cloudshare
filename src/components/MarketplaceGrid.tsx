@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useWallet } from "@/components/WalletProvider";
 
 export interface MarketplaceListing {
   id: string;
@@ -201,7 +201,7 @@ export default function MarketplaceGrid({
     return matchesSearch && matchesType;
   });
 
-  const types = ["all", ...new Set(demoListings.map((l) => l.type))];
+  const types = ["all"].concat(Array.from(new Set(demoListings.map((l) => l.type))));
 
   return (
     <div className="animate-fade-in">
