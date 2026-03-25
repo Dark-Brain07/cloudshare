@@ -8,6 +8,9 @@ interface WalletContextType {
   connect: () => Promise<void>;
   disconnect: () => void;
   network: string | null;
+  walletName: string | null;
+  showInstallPrompt: boolean;
+  dismissInstallPrompt: () => void;
 }
 
 const WalletContext = createContext<WalletContextType>({
@@ -16,80 +19,155 @@ const WalletContext = createContext<WalletContextType>({
   connect: async () => {},
   disconnect: () => {},
   network: null,
+  walletName: null,
+  showInstallPrompt: false,
+  dismissInstallPrompt: () => {},
 });
 
 export function useWallet() {
   return useContext(WalletContext);
 }
 
+/** Detect which wallet provider is available */
+function getWalletProvider(): { provider: any; name: string } | null {
+  if (typeof window === "undefined") return null;
+
+  // Petra injects as window.petra or window.aptos
+  if ((window as any).petra) {
+    return { provider: (window as any).petra, name: "Petra" };
+  }
+  if ((window as any).aptos) {
+    return { provider: (window as any).aptos, name: "Aptos" };
+  }
+  // Pontem wallet
+  if ((window as any).pontem) {
+    return { provider: (window as any).pontem, name: "Pontem" };
+  }
+  // Martian wallet
+  if ((window as any).martian) {
+    return { provider: (window as any).martian, name: "Martian" };
+  }
+
+  return null;
+}
+
 export default function WalletProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState<{ address: string } | null>(null);
   const [network, setNetwork] = useState<string | null>(null);
+  const [walletName, setWalletName] = useState<string | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   // Check if already connected on mount
   useEffect(() => {
-    const checkConnection = async () => {
+    // Small delay to let wallet extensions inject into window
+    const timer = setTimeout(async () => {
       try {
-        if (typeof window !== "undefined" && (window as any).aptos) {
-          const response = await (window as any).aptos.isConnected();
-          if (response) {
-            const acc = await (window as any).aptos.account();
-            setAccount({ address: acc.address });
-            setConnected(true);
-            try {
-              const net = await (window as any).aptos.network();
-              setNetwork(net);
-            } catch {
-              setNetwork("shelbynet");
+        const wallet = getWalletProvider();
+        if (wallet) {
+          const isConnected = await wallet.provider.isConnected?.();
+          if (isConnected) {
+            const acc = await wallet.provider.account();
+            const address =
+              acc?.address ||
+              acc?.account?.address ||
+              (typeof acc === "string" ? acc : "");
+            if (address) {
+              setAccount({ address });
+              setConnected(true);
+              setWalletName(wallet.name);
+              try {
+                const net = await wallet.provider.network();
+                setNetwork(net?.name || net || "shelbynet");
+              } catch {
+                setNetwork("shelbynet");
+              }
             }
           }
         }
       } catch {
-        // Not connected
+        // Not connected — no-op
       }
-    };
-    checkConnection();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const connect = useCallback(async () => {
     try {
-      if (typeof window !== "undefined" && (window as any).aptos) {
-        const response = await (window as any).aptos.connect();
-        setAccount({ address: response.address });
-        setConnected(true);
-        try {
-          const net = await (window as any).aptos.network();
-          setNetwork(net);
-        } catch {
-          setNetwork("shelbynet");
-        }
-      } else if (typeof window !== "undefined" && (window as any).petra) {
-        const response = await (window as any).petra.connect();
-        setAccount({ address: response.address });
-        setConnected(true);
-        setNetwork("shelbynet");
-      } else {
-        window.open("https://petra.app/", "_blank");
+      const wallet = getWalletProvider();
+
+      if (!wallet) {
+        // No wallet detected — show install prompt instead of window.open
+        setShowInstallPrompt(true);
+        return;
       }
-    } catch (err) {
+
+      const response = await wallet.provider.connect();
+      const address =
+        response?.address ||
+        response?.account?.address ||
+        (typeof response === "string" ? response : "");
+
+      if (!address) {
+        throw new Error(
+          "Connected but no address returned. Please try again."
+        );
+      }
+
+      setAccount({ address });
+      setConnected(true);
+      setWalletName(wallet.name);
+
+      try {
+        const net = await wallet.provider.network();
+        setNetwork(net?.name || net || "shelbynet");
+      } catch {
+        setNetwork("shelbynet");
+      }
+    } catch (err: any) {
+      // User rejected the connection — not an error
+      if (
+        err?.code === 4001 ||
+        err?.message?.includes("rejected") ||
+        err?.message?.includes("cancelled")
+      ) {
+        return;
+      }
       console.error("Wallet connection failed:", err);
     }
   }, []);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
     try {
-      if (typeof window !== "undefined" && (window as any).aptos) {
-        (window as any).aptos.disconnect();
+      const wallet = getWalletProvider();
+      if (wallet) {
+        await wallet.provider.disconnect?.();
       }
     } catch {}
     setConnected(false);
     setAccount(null);
     setNetwork(null);
+    setWalletName(null);
+  }, []);
+
+  const dismissInstallPrompt = useCallback(() => {
+    setShowInstallPrompt(false);
   }, []);
 
   return (
-    <WalletContext.Provider value={{ connected, account, connect, disconnect, network }}>
+    <WalletContext.Provider
+      value={{
+        connected,
+        account,
+        connect,
+        disconnect,
+        network,
+        walletName,
+        showInstallPrompt,
+        dismissInstallPrompt,
+      }}
+    >
       {children}
     </WalletContext.Provider>
   );

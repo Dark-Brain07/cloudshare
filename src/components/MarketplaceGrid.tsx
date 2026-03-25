@@ -188,7 +188,7 @@ export default function MarketplaceGrid({
   onPurchase,
   onCreateListing,
 }: MarketplaceGridProps) {
-  const { connected } = useWallet();
+  const { connected, connect } = useWallet();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
 
@@ -371,11 +371,8 @@ export default function MarketplaceGrid({
                   </p>
                 </div>
                 <button
-                  onClick={() => onPurchase(listing)}
-                  disabled={!connected}
-                  className={`btn-primary text-xs px-4 py-2 ${
-                    !connected ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  onClick={() => connected ? onPurchase(listing) : connect()}
+                  className="btn-primary text-xs px-4 py-2"
                 >
                   {connected ? (
                     <>
