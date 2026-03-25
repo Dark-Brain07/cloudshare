@@ -3,17 +3,14 @@
 import React, { useState } from "react";
 import { useWallet } from "@/components/WalletProvider";
 
-const WALLETS = [
+const INSTALL_WALLETS = [
   {
     name: "Petra",
     url: "https://petra.app/",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <rect width="24" height="24" rx="6" fill="#E84142" />
-        <path
-          d="M12 6L7 18h3l2-5 2 5h3L12 6z"
-          fill="white"
-        />
+        <path d="M12 6L7 18h3l2-5 2 5h3L12 6z" fill="white" />
       </svg>
     ),
     description: "The official Aptos wallet",
@@ -24,11 +21,7 @@ const WALLETS = [
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <rect width="24" height="24" rx="6" fill="#7C3AED" />
-        <path
-          d="M12 4l8 8-8 8-8-8 8-8z"
-          fill="white"
-          fillOpacity="0.9"
-        />
+        <path d="M12 4l8 8-8 8-8-8 8-8z" fill="white" fillOpacity="0.9" />
       </svg>
     ),
     description: "Multi-chain wallet for Aptos",
@@ -93,7 +86,7 @@ function WalletInstallModal({
           </p>
 
           <div className="space-y-2">
-            {WALLETS.map((wallet) => (
+            {INSTALL_WALLETS.map((wallet) => (
               <a
                 key={wallet.name}
                 href={wallet.url}
@@ -143,11 +136,11 @@ export default function WalletConnect() {
     account,
     connected,
     walletName,
-    showInstallPrompt,
-    dismissInstallPrompt,
-    isConnecting,
+    wallets,
   } = useWallet();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const address = account?.address || "";
 
@@ -155,6 +148,42 @@ export default function WalletConnect() {
     if (!addr) return "";
     if (addr.length < 10) return addr;
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const handleConnect = async () => {
+    try {
+      // Check if any wallets are available from the adapter
+      const available = wallets?.filter((w: any) => w.readyState === "Installed") || [];
+      
+      if (available.length === 0) {
+        // No wallets installed — show install prompt
+        setShowInstall(true);
+        return;
+      }
+
+      setIsConnecting(true);
+
+      // Connect to the first available wallet (usually Petra)
+      const walletToConnect = available[0]?.adapter?.name || available[0]?.name || "Petra";
+      await connect(walletToConnect);
+    } catch (err: any) {
+      console.error("Wallet connection error:", err);
+      // If adapter connect fails, try raw window.aptos as fallback
+      try {
+        if (typeof window !== "undefined" && (window as any).aptos) {
+          const resp = await (window as any).aptos.connect();
+          // Reload the page to pick up the connection via autoConnect
+          if (resp?.address) {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (fallbackErr) {
+        console.error("Fallback connection also failed:", fallbackErr);
+      }
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   if (connected && account) {
@@ -235,7 +264,7 @@ export default function WalletConnect() {
   return (
     <>
       <button
-        onClick={connect}
+        onClick={handleConnect}
         disabled={isConnecting}
         className={`btn-secondary ${isConnecting ? "opacity-70" : ""}`}
         id="connect-wallet"
@@ -259,8 +288,8 @@ export default function WalletConnect() {
       </button>
 
       <WalletInstallModal
-        isOpen={showInstallPrompt}
-        onClose={dismissInstallPrompt}
+        isOpen={showInstall}
+        onClose={() => setShowInstall(false)}
       />
     </>
   );

@@ -188,9 +188,24 @@ export default function MarketplaceGrid({
   onPurchase,
   onCreateListing,
 }: MarketplaceGridProps) {
-  const { connected, connect } = useWallet();
+  const { connected, connect, wallets } = useWallet();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
+
+  const handleConnect = async () => {
+    try {
+      const available = wallets?.filter((w: any) => w.readyState === "Installed") || [];
+      if (available.length > 0) {
+        const name = available[0]?.adapter?.name || available[0]?.name || "Petra";
+        await connect(name);
+      } else if (typeof window !== "undefined" && (window as any).aptos) {
+        await (window as any).aptos.connect();
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error("Wallet connection error:", err);
+    }
+  };
 
   const filteredListings = demoListings.filter((listing) => {
     const matchesSearch =
@@ -371,7 +386,7 @@ export default function MarketplaceGrid({
                   </p>
                 </div>
                 <button
-                  onClick={() => connected ? onPurchase(listing) : connect()}
+                  onClick={() => connected ? onPurchase(listing) : handleConnect()}
                   className="btn-primary text-xs px-4 py-2"
                 >
                   {connected ? (

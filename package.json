@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^1.26.0",
+    "@aptos-labs/wallet-adapter-core": "^8.5.0",
+    "@aptos-labs/wallet-adapter-react": "^8.3.2",
     "lucide-react": "^0.400.0",
     "next": "14.2.3",
+    "petra-plugin-wallet-adapter": "^0.4.5",
     "react": "^18",
     "react-dom": "^18"
   },
